@@ -1,0 +1,43 @@
+import { publicProcedure, router } from "./trpc";
+import { PrismaClient } from "@prisma/client";
+import { createHTTPServer } from "@trpc/server/adapters/standalone";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
+
+const prisma = new PrismaClient();
+
+const appRouter = router({
+  job: {
+    list: publicProcedure.query(async () => {
+      // Retrieve users from a datasource, this is an imaginary database
+      const jobs = await prisma.job.findMany();
+      return jobs;
+    }),
+  },
+});
+// Export type router type signature,
+// NOT the router itself.
+export type AppRouter = typeof appRouter;
+
+const server = createHTTPServer({
+  router: appRouter,
+});
+
+server.listen(3000);
+
+const trpc = createTRPCClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: "http://localhost:3000",
+    }),
+  ],
+});
+
+//const jobs = trpc.job.list;
+//console.log("jobs", jobs);
+
+async function main() {
+  const jobs = await trpc.job.list.query();
+  console.log("jobs", jobs);
+}
+
+main();
